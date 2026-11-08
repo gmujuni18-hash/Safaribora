@@ -1,0 +1,971 @@
+```react
+import React, { useState, useEffect } from 'react';
+import { 
+  Bus, Calendar, MapPin, ShieldCheck, User, Phone, IdCard, CreditCard, 
+  CheckCircle2, ArrowRight, ArrowLeft, RefreshCw, Search, Ticket, 
+  AlertCircle, Download, Clock, ChevronRight, Globe, Filter, Sparkles
+} from 'lucide-react';
+
+// --- TRANSLATIONS DICTIONARY ---
+const TRANSLATIONS = {
+  SW: {
+    appName: "SafariBora",
+    tagline: "Mfumo wa Tiketi za Mabasi Tanzania",
+    step1: "Tafuta",
+    step2: "Chagua Basi",
+    step3: "Chagua Kiti",
+    step4: "Taarifa za Abiria",
+    step5: "Malipo ya Nauli",
+    step6: "Tiketi Yako",
+    from: "Kutoka (Toke)",
+    to: "Kwenda (Kufika)",
+    travelDate: "Tarehe ya Safari",
+    searchBtn: "Tafuta Safari",
+    popularRoutes: "Njia Mashuhuri Nchini",
+    availableBuses: "Mabasi Yaliyopo",
+    selectSeat: "Chagua Kiti",
+    driver: "Dereva",
+    aisle: "Njia",
+    available: "Wazi",
+    booked: "Imeshachukuliwa",
+    selected: "Ulichagua",
+    latraManifest: "Daftari la Abiria (LATRA Compliance)",
+    fullName: "Jina Kamili la Abiria",
+    phone: "Namba ya Simu ya Abiria",
+    gender: "Jinsia",
+    male: "Mwanaume",
+    female: "Mwanamke",
+    nida: "Namba ya NIDA / Kitambulisho",
+    proceedPayment: "Endelea Kwenye Malipo",
+    selectPayment: "Maelekezo ya Kuponza/Kulipia Nauli",
+    manualPayInstruction: "Tafadhali tuma nauli kamili kupitia Lipa Namba (M-Pesa, Tigo Pesa, au Airtel Money):",
+    targetPhone: "352225438",
+    targetName: "SafariBora / EMILSON",
+    nameVerifyPrompt: "Hakikisha jina linalotokea kwenye simu yako wakati wa kulipa ni SafariBora au EMILSON kabla ya kuweka PIN.",
+    txnRefLabel: "Kumbukumbu ya Muamala / Transaction ID",
+    txnRefPlaceholder: "mf. 8HG92KL81Z au 9A82B1736",
+    senderPhoneLabel: "Namba ya Simu Aliyotuma Fedha",
+    verifyPaymentBtn: "Thibitisha na Upokee Tiketi",
+    ticketConfirmed: "Hongera! Tiketi Yako Imethibitishwa",
+    pnrLabel: "Namba ya Kumbukumbu (PNR)",
+    latraStatus: "Hali ya LATRA",
+    verified: "Imethibitishwa",
+    printTicket: "Pakua Tiketi (PDF)",
+    trackTicket: "Kagua Tiketi Yako",
+    totalFare: "Jumla ya Nauli",
+    classLuxury: "Luxury Coach",
+    classSemiLuxury: "Semi-Luxury",
+    classExecutive: "VIP Royal Class"
+  },
+  EN: {
+    appName: "SafariBora",
+    tagline: "Tanzania Intercity Bus Ticketing",
+    step1: "Search",
+    step2: "Select Bus",
+    step3: "Select Seats",
+    step4: "Passenger Details",
+    step5: "Manual Payment",
+    step6: "E-Ticket",
+    from: "Departure (From)",
+    to: "Destination (To)",
+    travelDate: "Travel Date",
+    searchBtn: "Search Buses",
+    popularRoutes: "Popular Corridors",
+    availableBuses: "Available Bus Services",
+    selectSeat: "Select Seats",
+    driver: "Driver",
+    aisle: "Aisle",
+    available: "Available",
+    booked: "Booked",
+    selected: "Selected",
+    latraManifest: "Passenger Manifest (LATRA Compliance)",
+    fullName: "Full Passenger Name",
+    phone: "Passenger Phone Number",
+    gender: "Gender",
+    male: "Male",
+    female: "Female",
+    nida: "NIDA / ID Number",
+    proceedPayment: "Proceed to Payment Instructions",
+    selectPayment: "Manual Payment Instructions",
+    manualPayInstruction: "Please send the exact fare using Lipa Namba via M-Pesa, Tigo Pesa, or Airtel Money:",
+    targetPhone: "352225438",
+    targetName: "SafariBora / EMILSON",
+    nameVerifyPrompt: "Ensure the business name displayed on your mobile screen shows SafariBora or EMILSON before confirming your PIN.",
+    txnRefLabel: "Mobile Money Transaction Reference ID",
+    txnRefPlaceholder: "e.g. 8HG92KL81Z or 9A82B1736",
+    senderPhoneLabel: "Sender Phone Number",
+    verifyPaymentBtn: "Submit Reference & Issue Ticket",
+    ticketConfirmed: "Congratulations! Ticket Confirmed",
+    pnrLabel: "Booking Reference (PNR)",
+    latraStatus: "LATRA Compliance",
+    verified: "Verified & Registered",
+    printTicket: "Download / Print Ticket",
+    trackTicket: "Track Existing Ticket",
+    totalFare: "Total Amount",
+    classLuxury: "Luxury Coach",
+    classSemiLuxury: "Semi-Luxury",
+    classExecutive: "VIP Royal Class"
+  }
+};
+
+const CITIES = [
+  "Dar es Salaam (Magufuli Terminal)",
+  "Arusha (Kilombero)",
+  "Mwanza (Nyegezi)",
+  "Mbeya (Nanenane)",
+  "Dodoma (Nane Nane Terminal)",
+  "Tanga (Kizingo)",
+  "Moshi (Kilimanjaro)",
+  "Morogoro (Msamvu)",
+  "Iringa (Msamvu Mjini)",
+  "Kigoma"
+];
+
+const BUS_OPERATORS = [
+  {
+    id: 'op1',
+    name: 'Kilimanjaro Express',
+    logo: '🏔️',
+    busType: 'Scania Marcopolo G7',
+    classType: 'classLuxury',
+    rating: '4.8',
+    departureTime: '06:00 AM',
+    arrivalTime: '03:30 PM',
+    duration: '9h 30m',
+    price: 45000,
+    features: ['AC', 'WiFi', 'Charging Ports', 'Water & Snack'],
+    totalSeats: 44,
+    bookedSeats: [3, 4, 7, 12, 13, 14, 21, 22, 30, 31]
+  },
+  {
+    id: 'op2',
+    name: 'Dar Express',
+    logo: '🦁',
+    busType: 'Yutong F12 Plus',
+    classType: 'classExecutive',
+    rating: '4.9',
+    departureTime: '06:30 AM',
+    arrivalTime: '03:45 PM',
+    duration: '9h 15m',
+    price: 50000,
+    features: ['Reclining Seats', 'AC', 'Screen TV', 'Free Lunch'],
+    totalSeats: 40,
+    bookedSeats: [1, 2, 5, 8, 9, 18, 19, 20, 35]
+  },
+  {
+    id: 'op3',
+    name: 'Katarama Luxury',
+    logo: '⚡',
+    busType: 'Zhongtong Golden Dragon',
+    classType: 'classSemiLuxury',
+    rating: '4.6',
+    departureTime: '07:00 AM',
+    arrivalTime: '04:15 PM',
+    duration: '9h 15m',
+    price: 38000,
+    features: ['AC', 'USB Charging', 'Music System'],
+    totalSeats: 44,
+    bookedSeats: [10, 11, 15, 16, 25, 26, 27, 40]
+  },
+  {
+    id: 'op4',
+    name: 'Tilisho Safari',
+    logo: '🐘',
+    busType: 'Higer Bus Coach',
+    classType: 'classSemiLuxury',
+    rating: '4.5',
+    departureTime: '08:00 AM',
+    arrivalTime: '05:00 PM',
+    duration: '9h 00m',
+    price: 35000,
+    features: ['Standard AC', 'Luggage Support'],
+    totalSeats: 44,
+    bookedSeats: [2, 6, 9, 17, 33, 34]
+  }
+];
+
+export default function App() {
+  const [lang, setLang] = useState('SW');
+  const t = TRANSLATIONS[lang];
+
+  // Stage state (1-6)
+  const [currentStage, setCurrentStage] = useState(1);
+
+  // Search Inputs
+  const [fromCity, setFromCity] = useState("Dar es Salaam (Magufuli Terminal)");
+  const [toCity, setToCity] = useState("Arusha (Kilombero)");
+  const [travelDate, setTravelDate] = useState("2026-11-15");
+
+  // Selection state
+  const [selectedBus, setSelectedBus] = useState(null);
+  const [selectedSeats, setSelectedSeats] = useState([]);
+
+  // Passenger details
+  const [passengerDetails, setPassengerDetails] = useState({
+    fullName: '',
+    phone: '',
+    gender: 'Mwanaume',
+    nida: ''
+  });
+
+  // Payment details
+  const [paymentPhone, setPaymentPhone] = useState('');
+  const [transactionRef, setTransactionRef] = useState('');
+  const [isProcessingPayment, setIsProcessingPayment] = useState(false);
+  const [pnrCode, setPnrCode] = useState('');
+
+  // Lookup modal
+  const [lookupPnr, setLookupPnr] = useState('');
+  const [showLookupModal, setShowLookupModal] = useState(false);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [currentStage]);
+
+  const handleShortcutSearch = (from, to) => {
+    setFromCity(from);
+    setToCity(to);
+    setCurrentStage(2);
+  };
+
+  const handleSeatClick = (seatNo, isBooked) => {
+    if (isBooked) return;
+    if (selectedSeats.includes(seatNo)) {
+      setSelectedSeats(selectedSeats.filter(s => s !== seatNo));
+    } else {
+      setSelectedSeats([...selectedSeats, seatNo]);
+    }
+  };
+
+  const handlePassengerSubmit = (e) => {
+    e.preventDefault();
+    if (!passengerDetails.fullName || !passengerDetails.phone) {
+      alert(lang === 'SW' ? 'Tafadhali jaza Jina na Namba ya Simu!' : 'Please complete Name and Phone Number!');
+      return;
+    }
+    setCurrentStage(5);
+  };
+
+  const handleSimulatePayment = (e) => {
+    e.preventDefault();
+    if (!transactionRef || transactionRef.trim().length < 5) {
+      alert(lang === 'SW' ? 'Tafadhali weka namba halali ya muamala (Transaction ID)!' : 'Please enter a valid Transaction Reference ID!');
+      return;
+    }
+    setIsProcessingPayment(true);
+    const generatedPNR = 'SB-' + Math.floor(100000 + Math.random() * 900000);
+    
+    setTimeout(() => {
+      setIsProcessingPayment(false);
+      setPnrCode(generatedPNR);
+      setCurrentStage(6);
+    }, 1200);
+  };
+
+  const calculateTotal = () => {
+    if (!selectedBus) return 0;
+    return selectedBus.price * selectedSeats.length;
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans">
+      
+      {/* HEADER */}
+      <header className="bg-emerald-900 text-white shadow-lg sticky top-0 z-40">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div 
+            className="flex items-center gap-2 cursor-pointer"
+            onClick={() => setCurrentStage(1)}
+          >
+            <div className="bg-amber-400 text-emerald-950 p-2 rounded-xl font-bold flex items-center justify-center">
+              <Bus className="w-6 h-6 stroke-[2.5]" />
+            </div>
+            <div>
+              <span className="text-2xl font-black tracking-tight text-white flex items-center gap-1">
+                Safari<span className="text-amber-400">Bora</span>
+              </span>
+              <span className="text-[10px] uppercase tracking-widest text-emerald-200 block -mt-1 font-semibold">
+                Tanzania Express E-Ticketing
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowLookupModal(true)}
+              className="text-xs sm:text-sm bg-emerald-800 hover:bg-emerald-700 text-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-700/60 flex items-center gap-1.5 transition-colors"
+            >
+              <Ticket className="w-4 h-4 text-amber-400" />
+              <span className="hidden sm:inline">{t.trackTicket}</span>
+            </button>
+
+            <button
+              onClick={() => setLang(lang === 'SW' ? 'EN' : 'SW')}
+              className="flex items-center gap-1 bg-emerald-950/60 hover:bg-emerald-950 text-amber-300 px-2.5 py-1 rounded-full text-xs font-bold border border-amber-400/30 transition"
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>{lang}</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* STEP NAVIGATION */}
+      <nav className="bg-white border-b border-slate-200 shadow-sm py-3 px-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between text-xs font-medium overflow-x-auto gap-2 scrollbar-none">
+          {[
+            { step: 1, label: t.step1 },
+            { step: 2, label: t.step2 },
+            { step: 3, label: t.step3 },
+            { step: 4, label: t.step4 },
+            { step: 5, label: t.step5 },
+            { step: 6, label: t.step6 }
+          ].map((item, idx) => (
+            <div key={item.step} className="flex items-center shrink-0">
+              <div 
+                className={`flex items-center gap-1.5 px-3 py-1 rounded-full transition-all ${
+                  currentStage === item.step 
+                    ? 'bg-amber-500 text-white font-bold shadow-sm' 
+                    : currentStage > item.step 
+                    ? 'bg-emerald-100 text-emerald-800' 
+                    : 'bg-slate-100 text-slate-400'
+                }`}
+              >
+                <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold ${
+                  currentStage === item.step ? 'bg-emerald-950 text-white' : 'bg-slate-200 text-slate-600'
+                }`}>
+                  {currentStage > item.step ? '✓' : item.step}
+                </span>
+                <span>{item.label}</span>
+              </div>
+              {idx < 5 && <ChevronRight className="w-4 h-4 text-slate-300 mx-1 shrink-0" />}
+            </div>
+          ))}
+        </div>
+      </nav>
+
+      {/* MAIN BODY */}
+      <main className="flex-grow max-w-5xl w-full mx-auto p-4 md:p-6">
+
+        {/* STAGE 1: SEARCH */}
+        {currentStage === 1 && (
+          <div className="space-y-8">
+            <div className="bg-emerald-900 text-white rounded-3xl p-6 md:p-10 shadow-xl relative overflow-hidden">
+              <div className="relative z-10 space-y-6 max-w-2xl">
+                <div>
+                  <span className="bg-amber-400 text-emerald-950 text-xs font-black uppercase px-3 py-1 rounded-full tracking-wider">
+                    Official Booking Portal
+                  </span>
+                  <h1 className="text-3xl sm:text-4xl font-black tracking-tight mt-3">
+                    Kata Tiketi Yako ya Basi Salama & Haraka
+                  </h1>
+                  <p className="text-emerald-200 text-sm mt-1">
+                    Unganishwa na mabasi yote makuu ya mikoani Tanzania na uthibitishe kupitia mfumo wa LATRA.
+                  </p>
+                </div>
+
+                <div className="bg-white rounded-2xl p-4 md:p-6 text-slate-800 shadow-2xl space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-bold uppercase text-slate-500 mb-1 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-amber-500" /> {t.from}
+                      </label>
+                      <select 
+                        value={fromCity} 
+                        onChange={(e) => setFromCity(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold uppercase text-slate-500 mb-1 flex items-center gap-1">
+                        <MapPin className="w-3.5 h-3.5 text-emerald-600" /> {t.to}
+                      </label>
+                      <select 
+                        value={toCity} 
+                        onChange={(e) => setToCity(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+                      >
+                        {CITIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-xs font-bold uppercase text-slate-500 mb-1 flex items-center gap-1">
+                      <Calendar className="w-3.5 h-3.5 text-amber-500" /> {t.travelDate}
+                    </label>
+                    <input 
+                      type="date" 
+                      value={travelDate}
+                      onChange={(e) => setTravelDate(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+                    />
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentStage(2)}
+                    className="w-full bg-amber-500 hover:bg-amber-600 text-emerald-950 font-black py-4 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-base"
+                  >
+                    <Search className="w-5 h-5" />
+                    <span>{t.searchBtn}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* QUICK CORRIDORS */}
+            <div className="space-y-3">
+              <h3 className="font-bold text-slate-800 text-sm uppercase tracking-wider flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-amber-500" /> {t.popularRoutes}
+              </h3>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {[
+                  { from: "Dar es Salaam (Magufuli Terminal)", to: "Arusha (Kilombero)" },
+                  { from: "Dar es Salaam (Magufuli Terminal)", to: "Mwanza (Nyegezi)" },
+                  { from: "Dar es Salaam (Magufuli Terminal)", to: "Mbeya (Nanenane)" },
+                  { from: "Arusha (Kilombero)", to: "Dodoma (Nane Nane Terminal)" }
+                ].map((item, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleShortcutSearch(item.from, item.to)}
+                    className="bg-white border border-slate-200 hover:border-emerald-500 p-3 rounded-xl text-left transition shadow-sm hover:shadow-md"
+                  >
+                    <span className="text-[10px] font-bold text-amber-600 uppercase block">Corridor</span>
+                    <span className="text-xs font-extrabold text-slate-800 block truncate">{item.from.split(' ')[0]} → {item.to.split(' ')[0]}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STAGE 2: BUS SELECTION */}
+        {currentStage === 2 && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+              <div>
+                <span className="text-xs text-slate-400 font-bold block">Njia iliyochaguliwa</span>
+                <span className="text-sm font-extrabold text-slate-800">{fromCity.split(' ')[0]} → {toCity.split(' ')[0]}</span>
+              </div>
+              <button 
+                onClick={() => setCurrentStage(1)}
+                className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-lg font-bold"
+              >
+                Badili Njia
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              {BUS_OPERATORS.map((bus) => (
+                <div key={bus.id} className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">{bus.logo}</span>
+                      <div>
+                        <h3 className="font-black text-slate-900 text-lg">{bus.name}</h3>
+                        <span className="text-xs text-emerald-700 font-semibold">{bus.busType} • {t[bus.classType]}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 text-xs text-slate-500 pt-1">
+                      <span className="flex items-center gap-1 font-bold text-slate-700"><Clock className="w-3.5 h-3.5 text-amber-500" /> {bus.departureTime}</span>
+                      <span>•</span>
+                      <span>Muda: {bus.duration}</span>
+                    </div>
+
+                    <div className="flex flex-wrap gap-1.5 pt-1">
+                      {bus.features.map(f => (
+                        <span key={f} className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-medium">{f}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex md:flex-col items-center md:items-end justify-between border-t md:border-t-0 pt-3 md:pt-0 border-slate-100">
+                    <div className="text-right">
+                      <span className="text-xs text-slate-400 font-medium block">Nauli kwa Kiti</span>
+                      <span className="text-2xl font-black text-emerald-900">{bus.price.toLocaleString()} TZS</span>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setSelectedBus(bus);
+                        setSelectedSeats([]);
+                        setCurrentStage(3);
+                      }}
+                      className="bg-amber-500 hover:bg-amber-600 text-emerald-950 font-bold text-xs px-5 py-2.5 rounded-xl shadow transition"
+                    >
+                      {t.selectSeat}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* STAGE 3: INTERACTIVE SEAT SELECTION */}
+        {currentStage === 3 && selectedBus && (
+          <div className="max-w-2xl mx-auto space-y-6">
+            <div className="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+              <div className="flex justify-between items-center border-b pb-4">
+                <div>
+                  <h3 className="font-extrabold text-slate-900">{selectedBus.name}</h3>
+                  <p className="text-xs text-slate-500">{fromCity.split(' ')[0]} kwenda {toCity.split(' ')[0]}</p>
+                </div>
+                <span className="text-lg font-black text-emerald-800">{selectedBus.price.toLocaleString()} TZS</span>
+              </div>
+
+              {/* SEAT LEGEND */}
+              <div className="flex justify-center gap-6 text-xs font-semibold">
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-slate-100 border border-slate-300"></div>
+                  <span>{t.available}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-amber-500 border border-amber-600"></div>
+                  <span>{t.selected}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded bg-slate-300 border border-slate-400"></div>
+                  <span>{t.booked}</span>
+                </div>
+              </div>
+
+              {/* BUS INTERIOR GRID (2x2) */}
+              <div className="bg-slate-100 p-6 rounded-3xl border-2 border-slate-200 max-w-sm mx-auto space-y-4">
+                {/* Cockpit */}
+                <div className="flex justify-between items-center border-b border-slate-300 pb-3 text-xs font-bold text-slate-500">
+                  <span>🚘 {t.driver}</span>
+                  <span>🚪 Mlango</span>
+                </div>
+
+                {/* Seats */}
+                <div className="grid grid-cols-4 gap-3">
+                  {Array.from({ length: selectedBus.totalSeats }, (_, i) => i + 1).map((seatNo) => {
+                    const isBooked = selectedBus.bookedSeats.includes(seatNo);
+                    const isSelected = selectedSeats.includes(seatNo);
+                    
+                    return (
+                      <React.Fragment key={seatNo}>
+                        <button
+                          disabled={isBooked}
+                          onClick={() => handleSeatClick(seatNo, isBooked)}
+                          className={`h-10 rounded-lg text-xs font-bold transition flex items-center justify-center ${
+                            isBooked 
+                              ? 'bg-slate-300 text-slate-500 border border-slate-400 cursor-not-allowed'
+                              : isSelected
+                              ? 'bg-amber-500 text-white border-2 border-amber-600 shadow-md scale-105'
+                              : 'bg-white text-slate-800 border border-slate-300 hover:border-emerald-500'
+                          }`}
+                        >
+                          {seatNo}
+                        </button>
+                        {/* Aisle spacing after column 2 */}
+                        {seatNo % 4 === 2 && <div className="col-span-0" />}
+                      </React.Fragment>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Bottom Summary Bar */}
+              <div className="bg-emerald-900 text-white p-4 rounded-xl flex justify-between items-center">
+                <div>
+                  <span className="text-xs text-emerald-200 block">Viti vilivyochaguliwa ({selectedSeats.length})</span>
+                  <span className="font-extrabold text-amber-400">{selectedSeats.join(', ') || 'Bado'}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-emerald-200 block">Jumla</span>
+                  <span className="text-xl font-black text-white">{calculateTotal().toLocaleString()} TZS</span>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setCurrentStage(2)}
+                  className="w-1/3 py-3 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs"
+                >
+                  Rudi Nyuma
+                </button>
+                <button
+                  disabled={selectedSeats.length === 0}
+                  onClick={() => setCurrentStage(4)}
+                  className="w-2/3 bg-amber-500 hover:bg-amber-600 text-emerald-950 font-black py-3 rounded-xl shadow text-xs disabled:opacity-50"
+                >
+                  {t.proceedPayment}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STAGE 4: LATRA MANIFEST FORM */}
+        {currentStage === 4 && (
+          <div className="max-w-xl mx-auto bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
+            <div className="border-b pb-3">
+              <span className="text-xs text-amber-600 font-bold uppercase tracking-wider">{t.step4}</span>
+              <h2 className="text-xl font-extrabold text-slate-900">{t.latraManifest}</h2>
+              <p className="text-xs text-slate-500 mt-1">Taarifa hizi zinahitajika kisheria na LATRA kwa ajili ya daftari la abiria.</p>
+            </div>
+
+            <form onSubmit={handlePassengerSubmit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">{t.fullName}</label>
+                <input
+                  type="text"
+                  required
+                  value={passengerDetails.fullName}
+                  onChange={(e) => setPassengerDetails({ ...passengerDetails, fullName: e.target.value })}
+                  placeholder="mf. Juma Hamisi Rashid"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">{t.phone}</label>
+                <input
+                  type="tel"
+                  required
+                  value={passengerDetails.phone}
+                  onChange={(e) => setPassengerDetails({ ...passengerDetails, phone: e.target.value })}
+                  placeholder="07XXXXXXXX"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">{t.gender}</label>
+                  <select
+                    value={passengerDetails.gender}
+                    onChange={(e) => setPassengerDetails({ ...passengerDetails, gender: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+                  >
+                    <option value="Mwanaume">{t.male}</option>
+                    <option value="Mwanamke">{t.female}</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold uppercase text-slate-700 mb-1">{t.nida}</label>
+                  <input
+                    type="text"
+                    value={passengerDetails.nida}
+                    onChange={(e) => setPassengerDetails({ ...passengerDetails, nida: e.target.value })}
+                    placeholder="NIDA Number (Sio Lazima)"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold outline-none focus:ring-2 focus:ring-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStage(3)}
+                  className="w-1/3 py-3 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs"
+                >
+                  Rudi Nyuma
+                </button>
+                <button
+                  type="submit"
+                  className="w-2/3 bg-amber-500 hover:bg-amber-600 text-emerald-950 font-black py-3 rounded-xl shadow text-xs"
+                >
+                  Endelea Kwenye Kuonyeshwa Namba ya Malipo
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* STAGE 5: MANUAL PAYMENT TO LIPA NAMBA 352225438 (SafariBora / EMILSON) */}
+        {currentStage === 5 && (
+          <div className="max-w-xl mx-auto bg-white rounded-2xl p-6 md:p-8 border border-slate-200 shadow-sm space-y-6">
+            <div className="text-center border-b pb-4">
+              <span className="text-xs text-amber-600 font-bold uppercase tracking-wider">{t.step5}</span>
+              <h2 className="text-xl font-extrabold text-slate-900">{t.selectPayment}</h2>
+              <p className="text-xs text-slate-500 mt-1">{t.manualPayInstruction}</p>
+            </div>
+
+            <div className="bg-emerald-900 text-white rounded-2xl p-5 shadow-md flex justify-between items-center">
+              <div>
+                <p className="text-xs text-emerald-200 font-medium">Jumla ya Nauli Unayopaswa Kutuma</p>
+                <p className="text-3xl font-black text-amber-400">{calculateTotal().toLocaleString()} TZS</p>
+              </div>
+              <span className="text-xs font-bold bg-emerald-800 text-emerald-100 px-3 py-1.5 rounded-lg border border-emerald-700">
+                Viti {selectedSeats.length} ({selectedSeats.join(', ')})
+              </span>
+            </div>
+
+            {/* MERCHANT DISPLAY & RECIPIENT NAME PROMPT */}
+            <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 space-y-3">
+              <div className="flex items-center justify-between border-b border-amber-200 pb-2">
+                <span className="text-xs text-amber-900 font-extrabold uppercase">Lipa Namba ya Biashara</span>
+                <span className="text-[10px] bg-amber-200 text-amber-900 px-2 py-0.5 rounded font-bold">Merchant Payment</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div>
+                  <span className="text-xs text-slate-500 block">Lipa Namba (M-Pesa / Tigo / Airtel):</span>
+                  <span className="text-2xl font-black text-slate-900 tracking-wider">{t.targetPhone}</span>
+                </div>
+                <div className="text-right">
+                  <span className="text-xs text-slate-500 block">Jina la Biashara:</span>
+                  <span className="text-xs font-black text-emerald-900 bg-emerald-100 px-2 py-1 rounded border border-emerald-300 inline-block">
+                    {t.targetName}
+                  </span>
+                </div>
+              </div>
+
+              {/* RECIPIENT VERIFICATION WARNING */}
+              <div className="bg-amber-100/90 border border-amber-300 p-3 rounded-xl flex items-start gap-2.5 text-xs text-amber-950 font-medium">
+                <AlertCircle className="w-5 h-5 text-amber-700 shrink-0 mt-0.5" />
+                <p>{t.nameVerifyPrompt}</p>
+              </div>
+
+              {/* CLICKABLE USSD DIALER BUTTONS */}
+              <div className="pt-2 border-t border-amber-200/60 space-y-2">
+                <span className="text-[11px] font-bold text-slate-600 block text-center uppercase tracking-wider">
+                  {lang === 'SW' ? 'Bofya hapa chini kufungua menyu ya kulipa:' : 'Click below to launch mobile money menu:'}
+                </span>
+                <div className="grid grid-cols-3 gap-2">
+                  <a
+                    href="tel:*150*00%23"
+                    className="bg-white hover:bg-red-50 border-2 border-red-200 hover:border-red-400 p-2 rounded-xl text-center transition shadow-sm flex flex-col items-center justify-center group"
+                  >
+                    <span className="block text-red-600 font-black text-xs group-hover:scale-105 transition-transform">M-Pesa</span>
+                    <span className="text-[10px] text-slate-500 font-mono font-bold">*150*00#</span>
+                  </a>
+
+                  <a
+                    href="tel:*150*01%23"
+                    className="bg-white hover:bg-blue-50 border-2 border-blue-200 hover:border-blue-400 p-2 rounded-xl text-center transition shadow-sm flex flex-col items-center justify-center group"
+                  >
+                    <span className="block text-blue-600 font-black text-xs group-hover:scale-105 transition-transform">Tigo Pesa</span>
+                    <span className="text-[10px] text-slate-500 font-mono font-bold">*150*01#</span>
+                  </a>
+
+                  <a
+                    href="tel:*150*60%23"
+                    className="bg-white hover:bg-rose-50 border-2 border-rose-200 hover:border-rose-400 p-2 rounded-xl text-center transition shadow-sm flex flex-col items-center justify-center group"
+                  >
+                    <span className="block text-rose-600 font-black text-xs group-hover:scale-105 transition-transform">Airtel Money</span>
+                    <span className="text-[10px] text-slate-500 font-mono font-bold">*150*60#</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            <form onSubmit={handleSimulatePayment} className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1">
+                  {t.senderPhoneLabel}
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={paymentPhone || passengerDetails.phone}
+                  onChange={(e) => setPaymentPhone(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-semibold focus:ring-2 focus:ring-emerald-500 outline-none"
+                  placeholder="07XXXXXXXX"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold uppercase text-slate-700 mb-1 flex justify-between">
+                  <span>{t.txnRefLabel}</span>
+                  <span className="text-amber-600 font-bold">*Lazima</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={transactionRef}
+                  onChange={(e) => setTransactionRef(e.target.value.toUpperCase())}
+                  className="w-full bg-slate-50 border border-slate-300 rounded-xl p-3 text-sm font-bold tracking-widest uppercase focus:ring-2 focus:ring-emerald-500 outline-none"
+                  placeholder={t.txnRefPlaceholder}
+                />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Weka namba ya kumbukumbu (Transaction ID) uliyotumiwa kwa SMS baada ya kulipia kwenda Lipa Namba 352225438 (SafariBora / EMILSON).
+                </p>
+              </div>
+
+              <div className="pt-2 flex gap-3">
+                <button
+                  type="button"
+                  onClick={() => setCurrentStage(4)}
+                  className="w-1/3 py-3 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs"
+                >
+                  Rudi Nyuma
+                </button>
+                <button
+                  type="submit"
+                  disabled={isProcessingPayment}
+                  className="w-2/3 bg-amber-500 hover:bg-amber-600 text-emerald-950 font-black py-3.5 rounded-xl shadow-lg transition flex items-center justify-center gap-2 text-sm"
+                >
+                  {isProcessingPayment ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      <span>Inahakiki Muamala...</span>
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>{t.verifyPaymentBtn}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {/* STAGE 6: E-TICKET VIEW */}
+        {currentStage === 6 && (
+          <div className="max-w-2xl mx-auto space-y-6">
+            <div className="bg-emerald-800 text-white p-6 rounded-2xl shadow-lg text-center space-y-2">
+              <div className="w-12 h-12 bg-amber-400 text-emerald-950 rounded-full flex items-center justify-center mx-auto text-2xl font-bold">
+                ✓
+              </div>
+              <h2 className="text-2xl font-black">{t.ticketConfirmed}</h2>
+              <p className="text-emerald-200 text-xs">Ujumbe wa SMS umetumwa kwa namba {passengerDetails.phone || paymentPhone}</p>
+            </div>
+
+            <div className="bg-white rounded-3xl border-2 border-slate-200 shadow-xl overflow-hidden relative">
+              <div className="bg-emerald-950 text-white p-5 flex justify-between items-center border-b border-emerald-800">
+                <div>
+                  <span className="text-amber-400 text-xs font-bold uppercase tracking-wider block">PNR / Kumbukumbu</span>
+                  <span className="text-2xl font-black tracking-widest">{pnrCode || 'SB-849201'}</span>
+                </div>
+                <div className="text-right">
+                  <span className="bg-emerald-800 text-emerald-200 text-[10px] uppercase font-bold px-2.5 py-1 rounded-md block mb-1">
+                    LATRA Verified
+                  </span>
+                  <span className="text-[10px] text-amber-300 font-mono font-bold block">
+                    Txn: {transactionRef || '8HG92KL81Z'}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4 border-b pb-4">
+                  <div>
+                    <span className="text-xs text-slate-400 uppercase font-semibold block">Basi & Kampuni</span>
+                    <span className="font-extrabold text-slate-800 text-base">{selectedBus?.name || 'Kilimanjaro Express'}</span>
+                    <span className="text-xs text-emerald-700 block">{selectedBus?.busType}</span>
+                  </div>
+                  <div>
+                    <span className="text-xs text-slate-400 uppercase font-semibold block">Tarehe ya Safari</span>
+                    <span className="font-extrabold text-slate-800 text-base">{travelDate}</span>
+                    <span className="text-xs text-slate-500 block">Saa: {selectedBus?.departureTime}</span>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 p-4 rounded-xl flex items-center justify-between border border-slate-100">
+                  <div>
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Kutoka</span>
+                    <span className="font-bold text-slate-800 text-sm">{fromCity}</span>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-amber-500" />
+                  <div className="text-right">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase block">Kwenda</span>
+                    <span className="font-bold text-slate-800 text-sm">{toCity}</span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs border-b pb-4">
+                  <div>
+                    <span className="text-slate-400 font-semibold block">Jina la Abiria</span>
+                    <span className="font-bold text-slate-800">{passengerDetails.fullName || 'Juma Rashid'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold block">Viti Vyako</span>
+                    <span className="font-black text-amber-600 text-sm">{selectedSeats.join(', ') || '14, 15'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold block">Jumla ya Nauli</span>
+                    <span className="font-bold text-emerald-900">{calculateTotal().toLocaleString()} TZS</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-400 font-semibold block">Kumbukumbu ya Malipo</span>
+                    <span className="font-mono font-bold text-slate-700">{transactionRef || '8HG92KL81Z'}</span>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2">
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-bold text-slate-700">Tafadhali onyesha tiketi hii au namba ya PNR wakati wa kupanda basi.</p>
+                    <p className="text-[10px] text-slate-400">Malipo yamethibitishwa kupitia Lipa Namba 352225438 (SafariBora / EMILSON)</p>
+                  </div>
+                  <div className="w-16 h-16 bg-slate-900 rounded-lg p-1 flex items-center justify-center text-white text-[8px] font-mono tracking-tighter text-center">
+                    [QR CODE VALID]
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 p-4 border-t border-slate-200 flex gap-3">
+                <button 
+                  onClick={() => window.print()}
+                  className="w-1/2 bg-slate-800 hover:bg-slate-900 text-white font-bold py-3 rounded-xl text-xs flex items-center justify-center gap-2"
+                >
+                  <Download className="w-4 h-4" /> {t.printTicket}
+                </button>
+                <button 
+                  onClick={() => setCurrentStage(1)}
+                  className="w-1/2 bg-amber-500 hover:bg-amber-600 text-emerald-950 font-bold py-3 rounded-xl text-xs flex items-center justify-center gap-2"
+                >
+                  <span>Katakoni Tiketi Nyingine</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+      </main>
+
+      {/* TRACKING MODAL */}
+      {showLookupModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl p-6 max-w-md w-full shadow-2xl space-y-4">
+            <div className="flex justify-between items-center border-b pb-3">
+              <h3 className="font-bold text-slate-900">{t.trackTicket}</h3>
+              <button onClick={() => setShowLookupModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            
+            <p className="text-xs text-slate-500">Weka namba yako ya PNR kupata tiketi yako tena.</p>
+
+            <input
+              type="text"
+              placeholder="mf. SB-849201"
+              value={lookupPnr}
+              onChange={(e) => setLookupPnr(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-sm font-bold uppercase focus:ring-2 focus:ring-emerald-500 outline-none"
+            />
+
+            <button
+              onClick={() => {
+                if(lookupPnr) {
+                  setPnrCode(lookupPnr);
+                  setShowLookupModal(false);
+                  setCurrentStage(6);
+                }
+              }}
+              className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-bold py-3 rounded-xl text-sm"
+            >
+              Tafuta Tiketi
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* FOOTER */}
+      <footer className="bg-slate-900 text-slate-400 text-xs py-6 border-t border-slate-800 mt-12">
+        <div className="max-w-5xl mx-auto px-4 text-center space-y-2">
+          <p className="text-slate-300 font-semibold">SafariBora Tanzania • LATRA E-Ticketing Compliant Platform</p>
+          <p className="text-slate-500">Integrated with M-Pesa, Tigo Pesa, Airtel Money for Intercity Bus Travel</p>
+        </div>
+      </footer>
+
+    </div>
+  );
+}
+```
